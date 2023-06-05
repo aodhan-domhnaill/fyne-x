@@ -3,17 +3,38 @@ package widget
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"fyne.io/x/fyne/layout"
 )
 
 type DetailsTable struct {
 	widget.BaseWidget
+	scroller       fyne.Widget
 	tableContainer *fyne.Container
 }
 
 type detailsRowElement struct {
+	widget.BaseWidget
 	render fyne.CanvasObject
+}
+
+var _ fyne.Widget = (*detailsRowElement)(nil)
+
+func newDetailsRowElement(o fyne.CanvasObject) layout.ResponsiveWidget {
+	ro := &detailsRowElement{render: o}
+	ro.ExtendBaseWidget(ro)
+	return ro
+}
+
+func (ro *detailsRowElement) HandleResize(newPos fyne.Position, windowSize, containerSize fyne.Size) {
+	if newPos.X+ro.MinSize().Width > containerSize.Width-theme.Padding() {
+		ro.Hide()
+	} else {
+		ro.Show()
+		ro.Resize(ro.MinSize())
+		ro.Move(newPos)
+	}
 }
 
 func (ro *detailsRowElement) CreateRenderer() fyne.WidgetRenderer {
@@ -27,34 +48,25 @@ func (ro *detailsRowElement) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func NewDetailsTable() *DetailsTable {
+	box := container.NewVBox()
+	scroller := container.NewVScroll(box)
 	rt := &DetailsTable{
-		tableContainer: container.NewVBox(),
+		tableContainer: box,
+		scroller:       scroller,
 	}
-
 	rt.ExtendBaseWidget(rt)
 
 	return rt
 }
 
-func (rt *DetailsTable) AddRow(ele []fyne.CanvasObject, colConstants []float32) {
+func (rt *DetailsTable) AddRow(ele []fyne.CanvasObject) {
 	l := layout.NewResponsiveLayout()
-	scale := 1 / float32(len(ele))
-	for i, e := range ele {
-		row := layout.Responsive(
-			e,
-			colConstants[i]*scale,
-			colConstants[i]*scale,
-			colConstants[i]*scale,
-			colConstants[i]*scale,
-		)
-		if i > 1 {
-			row.Hidable(true)
-		}
-		l.Add(row)
+	for _, e := range ele {
+		l.Add(newDetailsRowElement(e))
 	}
 	rt.tableContainer.Add(l)
 }
 
 func (rt *DetailsTable) CreateRenderer() fyne.WidgetRenderer {
-	return widget.NewSimpleRenderer(container.NewVScroll(rt.tableContainer))
+	return widget.NewSimpleRenderer(rt.scroller)
 }
