@@ -5,6 +5,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -14,6 +15,8 @@ type Event struct {
 	Timestamp time.Time
 	Summary   string
 	Details   fyne.CanvasObject
+
+	Expanded bool
 }
 
 func NewEvent(timestamp time.Time, summary string, details fyne.CanvasObject) *Event {
@@ -21,6 +24,7 @@ func NewEvent(timestamp time.Time, summary string, details fyne.CanvasObject) *E
 		Timestamp: timestamp,
 		Summary:   summary,
 		Details:   details,
+		Expanded:  false,
 	}
 	e.ExtendBaseWidget(e)
 
@@ -28,9 +32,34 @@ func NewEvent(timestamp time.Time, summary string, details fyne.CanvasObject) *E
 }
 
 func (e *Event) CreateRenderer() fyne.WidgetRenderer {
-	return widget.NewSimpleRenderer(
-		widget.NewLabel(e.Summary),
+	box := container.NewVBox()
+
+	button := widget.NewButtonWithIcon(
+		"", theme.MenuExpandIcon(), func() {},
 	)
+
+	box.Add(container.NewHBox(
+		button,
+		widget.NewRichTextFromMarkdown(
+			"**"+e.Timestamp.Format(time.UnixDate)+"**",
+		),
+		widget.NewRichTextFromMarkdown(e.Summary),
+	))
+
+	button.OnTapped = func() {
+		e.Expanded = !e.Expanded
+		if e.Expanded {
+			button.Icon = theme.MenuDropDownIcon()
+			box.Add(e.Details)
+		} else {
+			button.Icon = theme.MenuExpandIcon()
+			box.Remove(e.Details)
+		}
+		button.Refresh()
+		box.Refresh()
+	}
+
+	return widget.NewSimpleRenderer(box)
 }
 
 type Timeline struct {
